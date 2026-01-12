@@ -1,0 +1,8 @@
+CONFIDENTIAL REPORT: PROJECT APOLLO
+-----------------------------------
+Project Manager: Sarah Connors
+Launch Date: October 15, 2026
+Total Budget: $5,000,000 (Five Million USD)
+Status: Green
+Risk Factors: Low supply of semiconductors.
+Note: If budget exceeds $6M, we must cancel the launch.
