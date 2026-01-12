@@ -1,10 +1,14 @@
-# --- 1. THE LINUX FIX (Must be at the very top) ---
-__import__('pysqlite3')
+# --- 1. THE LINUX FIX (Safe for Mac Local Testing) ---
 import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+try:
+    __import__('pysqlite3')
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except ImportError:
+    pass # We are running locally on Mac, so we skip the Linux fix.
 
 # --- 2. STANDARD IMPORTS ---
 import streamlit as st
+# ... rest of your code ...
 import os
 from dotenv import load_dotenv
 
