@@ -5,5 +5,5 @@ langchain-openai
 langchain-classic
 chromadb
 python-dotenv
-duckduckgo-search
+duckduckgo-search>=6.0.0
 pysqlite3-binary ; sys_platform == 'linux'
