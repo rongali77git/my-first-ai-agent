@@ -7,3 +7,4 @@ chromadb
 python-dotenv
 duckduckgo-search>=6.0.0
 pysqlite3-binary ; sys_platform == 'linux'
+
