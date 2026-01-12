@@ -1,12 +1,14 @@
+# --- 1. THE LINUX FIX (Must be at the very top) ---
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
-# ... the rest of your imports (streamlit, etc) follow below ...
+# --- 2. STANDARD IMPORTS ---
 import streamlit as st
 import os
 from dotenv import load_dotenv
 
+# LangChain Imports
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_classic.chains import RetrievalQA 
@@ -14,32 +16,42 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_classic.agents import initialize_agent, AgentType 
 from langchain_core.tools import Tool
 
-# 1. Page Config (Browser Title)
+# --- 3. PAGE CONFIG ---
 st.set_page_config(page_title="My Super Agent", page_icon="🤖")
 st.title("🤖 Agentic RAG: The Final Boss")
 
-# 2. Load Secrets
+# Load Secrets (Works for both Local .env and Cloud Secrets)
 load_dotenv()
 
-# 3. Setup the AI (Cached for speed)
-# This function only runs ONCE.
+# --- 4. SETUP THE AI (Self-Healing Version) ---
 @st.cache_resource
 def setup_agent():
+    # Define the Brain
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
     
+    # Check if the database exists. If not, run ingest.py to build it.
     if not os.path.exists("./chroma_db"):
-        st.error("Error: chroma_db not found. Please run ingest.py!")
-        return None
-        
+        st.warning("⚠️ Cloud Memory not found. Building it now... (This takes 5 seconds)")
+        try:
+            # This imports your ingest script and runs it instantly
+            import ingest 
+            st.success("✅ Memory Built Successfully!")
+        except Exception as e:
+            st.error(f"Failed to build memory: {e}")
+            return None
+            
+    # Load the Database (Now guaranteed to exist)
     embedding_function = OpenAIEmbeddings()
     vectorstore = Chroma(persist_directory="./chroma_db", embedding_function=embedding_function)
     
+    # Create the RAG Chain
     rag_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
         retriever=vectorstore.as_retriever()
     )
     
+    # Create the Tools
     rag_tool = Tool(
         name="Private_Knowledge_Base",
         func=rag_chain.invoke,
@@ -53,6 +65,7 @@ def setup_agent():
         description="Useful for finding current stock prices, weather, news, or public information."
     )
     
+    # Create the Agent
     tools = [rag_tool, web_tool]
     agent = initialize_agent(
         tools,
@@ -63,28 +76,32 @@ def setup_agent():
     )
     return agent
 
+# Initialize the Agent
 agent = setup_agent()
 
-# 4. The Chat Interface Logic
-# Initialize chat history if it doesn't exist
+# --- 5. CHAT INTERFACE ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display previous messages (so they don't disappear when you type new ones)
+# Display previous messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # React to user input
 if prompt := st.chat_input("Ask me anything..."):
-    # Show user message immediately
+    # Display user message
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Get AI response
     with st.chat_message("assistant"):
-        response = agent.invoke(prompt)
-        output_text = response['output']
-        st.markdown(output_text)
-        # Save AI response to history
-        st.session_state.messages.append({"role": "assistant", "content": output_text})
+        if agent is not None:
+            # We use a spinner so the user knows it's thinking
+            with st.spinner("Thinking..."):
+                response = agent.invoke(prompt)
+                output_text = response['output']
+                st.markdown(output_text)
+                st.session_state.messages.append({"role": "assistant", "content": output_text})
+        else:
+            st.error("Agent failed to initialize.")
